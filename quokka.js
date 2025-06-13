@@ -1,14 +1,12 @@
-(function (Scratch) {
+(function () {
   'use strict';
   console.log('✅ QuokkaExtension loaded');
 
   class QuokkaExtension {
-    constructor(runtime) {
-      // <-- runtime is now correctly passed in by the VM
-      this.runtime = runtime;
+    constructor() {
       this.latestCounts = {};
       this._newResult = false;
-      console.log('✅ QuokkaExtension constructor (runtime ok?):', !!this.runtime);
+      console.log('✅ QuokkaExtension constructor');
     }
 
     getInfo() {
@@ -60,12 +58,48 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(json => {
-        if (json.error_code !== 0) {
-          console.error('❌ Quokka returned error:', json.error);
-          this.latestCounts = { error: json.error };
-        } else if
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(json => {
+          if (json.error_code !== 0) {
+            console.error('❌ Quokka returned error:', json.error);
+            this.latestCounts = { error: json.error };
+          } else if (json.result && Array.isArray(json.result.c)) {
+            const counts = {};
+            json.result.c.forEach(bits => {
+              const key = bits.join('');
+              counts[key] = (counts[key] || 0) + 1;
+            });
+            this.latestCounts = counts;
+          } else {
+            this.latestCounts = {};
+          }
+          // signal a new result; the hat block will pick it up on its next poll
+          this._newResult = true;
+        })
+        .catch(err => {
+          console.error('❌ Quokka fetch error:', err);
+          this.latestCounts = { error: err.message };
+          this._newResult = true;
+        });
+    }
+
+    whenResults() {
+      if (this._newResult) {
+        this._newResult = false;
+        return true;
+      }
+      return false;
+    }
+
+    getCounts() {
+      return JSON.stringify(this.latestCounts);
+    }
+  }
+
+  // Register an *instance* for a sandboxed extension 
+  // (no runtime object is provided in this mode) :contentReference[oaicite:0]{index=0}:
+  Scratch.extensions.register(new QuokkaExtension());
+})();
