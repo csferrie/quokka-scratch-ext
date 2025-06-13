@@ -1,13 +1,17 @@
 (function (Scratch) {
   'use strict';
+  // Should fire as soon as the script loads
+  console.log('✅ QuokkaExtension loaded');
 
   class QuokkaExtension {
     constructor(runtime) {
       this.runtime = runtime;
       this.latest = null;  // will hold the last result JSON
+      console.log('✅ QuokkaExtension constructor');
     }
 
     getInfo() {
+      console.log('✅ QuokkaExtension getInfo');
       return {
         id: 'quokka',
         name: 'Quokka QASM',
@@ -20,7 +24,7 @@
               CODE: {
                 type: Scratch.ArgumentType.STRING,
                 defaultValue:
-                  'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\nh q[0];'
+                  'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\nh q[0];\nmeasure q[0] -> c[0];'
               },
               SHOTS: {
                 type: Scratch.ArgumentType.NUMBER,
@@ -43,6 +47,7 @@
     }
 
     runQuantum(args) {
+      console.log('⏳ Sending to Quokka:', args);
       const payload = {
         script: args.CODE,
         count: args.SHOTS
@@ -53,18 +58,17 @@
         body: JSON.stringify(payload)
       })
         .then(response => {
-          if (!response.ok) {
-            return response.text().then(text => Promise.reject(text));
-          }
+          console.log('⏳ HTTP status:', response.status, response.statusText);
           return response.json();
         })
         .then(json => {
+          console.log('✅ Quokka replied:', json);
           this.latest = json.result;
-          // trigger the hat block
-          this.runtime.startHats('quokka_whenResults');
+          // fire the hat block
+          this.runtime.startHats('quokka_whenResults', {});
         })
         .catch(err => {
-          console.error('Quokka error:', err);
+          console.error('❌ Quokka error:', err);
         });
     }
 
@@ -74,7 +78,7 @@
     }
 
     getResults() {
-      // returns the raw result JSON as a string
+      console.log('📝 getResults reporter called, returning:', this.latest);
       return this.latest ? JSON.stringify(this.latest) : '';
     }
   }
