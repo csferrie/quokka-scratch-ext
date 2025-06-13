@@ -1,12 +1,12 @@
 (function (Scratch) {
   'use strict';
-  // Should fire as soon as the script loads
   console.log('✅ QuokkaExtension loaded');
 
   class QuokkaExtension {
     constructor(runtime) {
       this.runtime = runtime;
-      this.latest = null;  // will hold the last result JSON
+      this.latest = null;      // last result JSON
+      this._newResult = false; // flag for a fresh result
       console.log('✅ QuokkaExtension constructor');
     }
 
@@ -24,7 +24,12 @@
               CODE: {
                 type: Scratch.ArgumentType.STRING,
                 defaultValue:
-                  'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\ncreg c[1];\nh q[0];\nmeasure q[0] -> c[0];'
+                  'OPENQASM 2.0;\n' +
+                  'include "qelib1.inc";\n' +
+                  'qreg q[1];\n' +
+                  'creg c[1];\n' +
+                  'h q[0];\n' +
+                  'measure q[0] -> c[0];'
               },
               SHOTS: {
                 type: Scratch.ArgumentType.NUMBER,
@@ -63,8 +68,9 @@
         })
         .then(json => {
           console.log('✅ Quokka replied:', json);
-          this.latest = json.result;
-          // fire the hat block
+          this.latest = json.result || {};
+          this._newResult = true;
+          // fire the hat block once
           this.runtime.startHats('quokka_whenResults', {});
         })
         .catch(err => {
@@ -73,13 +79,16 @@
     }
 
     whenResults() {
-      // always returns true so the hat fires once per runQuantum
-      return true;
+      if (this._newResult) {
+        this._newResult = false;
+        return true;
+      }
+      return false;
     }
 
     getResults() {
       console.log('📝 getResults reporter called, returning:', this.latest);
-      return this.latest ? JSON.stringify(this.latest) : '';
+      return JSON.stringify(this.latest);
     }
   }
 
