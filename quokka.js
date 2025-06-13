@@ -5,8 +5,8 @@
   class QuokkaExtension {
     constructor(runtime) {
       this.runtime = runtime;
-      this.latest = null;      // last result JSON
-      this._newResult = false; // flag for a fresh result
+      this.latestCounts = {};    // most-recent counts { "00":23, "01":77, ... }
+      this._newResult = false;   // flag to trigger the hat exactly once
       console.log('✅ QuokkaExtension constructor');
     }
 
@@ -43,9 +43,9 @@
             text: 'when quantum results received'
           },
           {
-            opcode: 'getResults',
+            opcode: 'getCounts',
             blockType: Scratch.BlockType.REPORTER,
-            text: 'quokka results'
+            text: 'quokka counts'
           }
         ]
       };
@@ -53,29 +53,40 @@
 
     runQuantum(args) {
       console.log('⏳ Sending to Quokka:', args);
-      const payload = {
-        script: args.CODE,
-        count: args.SHOTS
-      };
+      const payload = { script: args.CODE, count: args.SHOTS };
       fetch('https://quokka2.quokkacomputing.com/qsim/qasm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-        .then(response => {
-          console.log('⏳ HTTP status:', response.status, response.statusText);
-          return response.json();
-        })
-        .then(json => {
-          console.log('✅ Quokka replied:', json);
-          this.latest = json.result || {};
-          this._newResult = true;
-          // fire the hat block once
-          this.runtime.startHats('quokka_whenResults', {});
-        })
-        .catch(err => {
-          console.error('❌ Quokka error:', err);
-        });
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(json => {
+        if (json.error_code !== 0) {
+          console.error('❌ Quokka returned error:', json.error);
+          this.latestCounts = { error: json.error };
+        } else if (json.result && Array.isArray(json.result.c)) {
+          // aggregate the raw bit-arrays into counts
+          const counts = {};
+          json.result.c.forEach(bits => {
+            const key = bits.join('');
+            counts[key] = (counts[key] || 0) + 1;
+          });
+          this.latestCounts = counts;
+        } else {
+          this.latestCounts = {};
+        }
+        this._newResult = true;
+        this.runtime.startHats('quokka_whenResults');
+      })
+      .catch(err => {
+        console.error('❌ Quokka fetch error:', err);
+        this.latestCounts = { error: err.message };
+        this._newResult = true;
+        this.runtime.startHats('quokka_whenResults');
+      });
     }
 
     whenResults() {
@@ -86,9 +97,9 @@
       return false;
     }
 
-    getResults() {
-      console.log('📝 getResults reporter called, returning:', this.latest);
-      return JSON.stringify(this.latest);
+    getCounts() {
+      // No console.log here, so a dragged-out monitor won’t spam the console.
+      return JSON.stringify(this.latestCounts);
     }
   }
 
