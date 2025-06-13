@@ -24,7 +24,7 @@
               CODE: {
                 type: Scratch.ArgumentType.STRING,
                 defaultValue:
-                  'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\nh q[0];\nmeasure q[0] -> c[0];'
+                  'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[1];\ncreg c[1];\nh q[0];\nmeasure q[0] -> c[0];'
               },
               SHOTS: {
                 type: Scratch.ArgumentType.NUMBER,
