@@ -1,83 +1,66 @@
 (function (Scratch) {
-  'use strict';
-  console.log('🛠️ Debug QuokkaExtension starting…');
-  console.log('Global Scratch object:', Scratch);
-  
-  class DebugQuokka {
-    constructor(runtime) {
-      this.runtime = runtime;
-      console.log('🛠️ constructor, runtime passed:', runtime);
-    }
+    'use strict';
+    console.log('🛠️ QuokkaExtension (sandbox) starting…');
 
-    getInfo() {
-      console.log('🛠️ getInfo called');
-      // list out the prototype methods
-      const proto = Object.getPrototypeOf(this);
-      console.log('🛠️ prototype methods:', Object.getOwnPropertyNames(proto));
-      
-      const blocks = [
-        'runQuantum',
-        'whenResults',
-        'getCounts'
-      ].map(op => {
-        console.log(`🛠️ checking method for opcode "${op}":`, typeof this[op]);
-        return { opcode: op };
-      });
-      
-      return {
-        id: 'quokka',
-        name: 'Quokka QASM (debug)',
-        blocks: [
-          {
-            opcode: 'runQuantum',
-            blockType: Scratch.BlockType.COMMAND,
-            text: 'run QASM [CODE] shots [SHOTS]',
-            arguments: {
-              CODE: { type: Scratch.ArgumentType.STRING, defaultValue: '…' },
-              SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 }
+    class QuokkaExtension {
+        constructor() {
+            console.log('🛠️ QuokkaExtension constructor');
+            this.latestCounts = {};
+            this._newResult = false;
+        }
+
+        getInfo() {
+            console.log('🛠️ getInfo called');
+            return {
+                id: 'quokka',
+                name: 'Quokka QASM (sandbox)',
+                blocks: [
+                    {
+                        opcode: 'runQuantum',
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: 'run QASM [CODE] shots [SHOTS]',
+                        arguments: {
+                            CODE: { type: Scratch.ArgumentType.STRING, defaultValue: 'OPENQASM 2.0; include "qelib1.inc"; qreg q[1]; creg c[1]; h q[0]; measure q[0] -> c[0];' },
+                            SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 }
+                        }
+                    },
+                    {
+                        opcode: 'whenResults',
+                        blockType: Scratch.BlockType.HAT,
+                        text: 'when quantum results received'
+                    },
+                    {
+                        opcode: 'getCounts',
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: 'quokka counts'
+                    }
+                ]
+            };
+        }
+
+        runQuantum(args) {
+            console.log('🛠️ runQuantum with', args);
+            // simulate result immediately so you can test
+            this.latestCounts = { debug: 1 };
+            this._newResult = true;
+        }
+
+        whenResults() {
+            if (this._newResult) {
+                this._newResult = false;
+                console.log('🛠️ whenResults → true');
+                return true;
             }
-          },
-          {
-            opcode: 'whenResults',
-            blockType: Scratch.BlockType.HAT,
-            text: 'when quantum results received'
-          },
-          {
-            opcode: 'getCounts',
-            blockType: Scratch.BlockType.REPORTER,
-            text: 'quokka counts'
-          }
-        ]
-      };
+            return false;
+        }
+
+        getCounts() {
+            console.log('🛠️ getCounts →', this.latestCounts);
+            return JSON.stringify(this.latestCounts);
+        }
     }
 
-    runQuantum(args) {
-      console.log('🛠️ runQuantum invoked with', args);
-      // don’t actually call fetch—just signal a result so you can test the hat
-      this._counts = { debug: 1 };
-      this._fired = true;
-      if (this.runtime) {
-        console.log('🛠️ firing hat via runtime.startHats');
-        this.runtime.startHats('quokka_whenResults');
-      }
-    }
+    // ———> **Sandboxed mode: register an instance** <———
+    Scratch.extensions.register(new QuokkaExtension());
 
-    whenResults() {
-      if (this._fired) {
-        this._fired = false;
-        console.log('🛠️ whenResults returning true');
-        return true;
-      }
-      return false;
-    }
-
-    getCounts() {
-      console.log('🛠️ getCounts returning', this._counts);
-      return JSON.stringify(this._counts || {});
-    }
-  }
-
-  console.log('🛠️ registering DebugQuokka…');
-  // Register the class so TurboWarp will instantiate it correctly
-  Scratch.extensions.register(DebugQuokka);
 })(window.Scratch);
