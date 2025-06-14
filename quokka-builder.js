@@ -1,99 +1,107 @@
 (function (Scratch) {
-  'use strict';
-  console.log('✅ QuokkaExtension loaded');
+    'use strict';
+    console.log('✅ Quokka Extension loaded');
 
-  class QuokkaExtension {
-    constructor(runtime) {
-      // In unsandboxed mode, the VM will pass you a real `runtime` here.
-      this.runtime = runtime;
-      this.latestCounts = {};
-      this._newResult = false;
-      console.log('✅ QuokkaExtension constructor, runtime ok?', !!runtime);
-    }
+    class QuokkaExtension {
+        constructor(runtime) {
+            // TurboWarp will call `new QuokkaExtension(runtime)` for you.
+            this.runtime = runtime;
+            this.latestCounts = {};
+            this._newResult = false;
+            console.log('✅ QuokkaExtension constructor (runtime ok?):', !!runtime);
+        }
 
-    getInfo() {
-      console.log('✅ QuokkaExtension getInfo');
-      return {
-        id: 'quokka',
-        name: 'Quokka QASM',
-        blocks: [
-          {
-            opcode: 'runQuantum',
-            blockType: Scratch.BlockType.COMMAND,
-            text: 'run QASM [CODE] shots [SHOTS]',
-            arguments: {
-              CODE: {
-                type: Scratch.ArgumentType.STRING,
-                defaultValue:
-                  'OPENQASM 2.0;\n' +
-                  'include "qelib1.inc";\n' +
-                  'qreg q[1];\n' +
-                  'creg c[1];\n' +
-                  'h q[0];\n' +
-                  'measure q[0] -> c[0];'
-              },
-              SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 }
-            }
-          },
-          {
-            opcode: 'whenResults',
-            blockType: Scratch.BlockType.HAT,
-            text: 'when quantum results received'
-          },
-          {
-            opcode: 'getCounts',
-            blockType: Scratch.BlockType.REPORTER,
-            text: 'quokka counts'
-          }
-        ]
-      };
-    }
+        getInfo() {
+            console.log('✅ QuokkaExtension getInfo');
+            return {
+                id: 'quokka',
+                name: 'Quokka QASM',
+                blocks: [
+                    {
+                        opcode: 'runQuantum',
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: 'run QASM [CODE] shots [SHOTS]',
+                        arguments: {
+                            CODE: {
+                                type: Scratch.ArgumentType.STRING,
+                                defaultValue:
+                                  'OPENQASM 2.0;\n' +
+                                  'include "qelib1.inc";\n' +
+                                  'qreg q[1];\n' +
+                                  'creg c[1];\n' +
+                                  'h q[0];\n' +
+                                  'measure q[0] -> c[0];'
+                            },
+                            SHOTS: {
+                                type: Scratch.ArgumentType.NUMBER,
+                                defaultValue: 100
+                            }
+                        }
+                    },
+                    {
+                        opcode: 'whenResults',
+                        blockType: Scratch.BlockType.HAT,
+                        text: 'when quantum results received'
+                    },
+                    {
+                        opcode: 'getCounts',
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: 'quokka counts'
+                    }
+                ]
+            };
+        }
 
-    runQuantum(args) {
-      console.log('⏳ Sending to Quokka:', args);
-      fetch('https://quokka2.quokkacomputing.com/qsim/qasm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: args.CODE, count: args.SHOTS })
-      })
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-        .then(json => {
-          if (json.error_code !== 0) {
-            console.error('❌ Quokka error:', json.error);
-            this.latestCounts = { error: json.error };
-          } else {
-            const counts = {};
-            json.result.c.forEach(bits => {
-              const key = bits.join('');
-              counts[key] = (counts[key] || 0) + 1;
+        runQuantum(args) {
+            console.log('⏳ Sending to Quokka:', args);
+            fetch('https://quokka2.quokkacomputing.com/qsim/qasm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ script: args.CODE, count: args.SHOTS })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(json => {
+                if (json.error_code !== 0) {
+                    console.error('❌ Quokka returned error:', json.error);
+                    this.latestCounts = { error: json.error };
+                } else {
+                    const counts = {};
+                    json.result.c.forEach(bits => {
+                        const key = bits.join('');
+                        counts[key] = (counts[key] || 0) + 1;
+                    });
+                    this.latestCounts = counts;
+                }
+                this._newResult = true;
+                // In *unsandboxed* mode, you can explicitly fire the hat:
+                if (this.runtime) this.runtime.startHats('quokka_whenResults');
+            })
+            .catch(err => {
+                console.error('❌ Quokka fetch error:', err);
+                this.latestCounts = { error: err.message };
+                this._newResult = true;
+                if (this.runtime) this.runtime.startHats('quokka_whenResults');
             });
-            this.latestCounts = counts;
-          }
-          this._newResult = true;
-          // In unsandboxed mode you can still fire the hat explicitly:
-          if (this.runtime) this.runtime.startHats('quokka_whenResults');
-        })
-        .catch(err => {
-          console.error('❌ Quokka fetch error:', err);
-          this.latestCounts = { error: err.message };
-          this._newResult = true;
-          if (this.runtime) this.runtime.startHats('quokka_whenResults');
-        });
+        }
+
+        whenResults() {
+            // In *sandboxed* mode TurboWarp polls your hat; return true once.
+            if (this._newResult) {
+                this._newResult = false;
+                return true;
+            }
+            return false;
+        }
+
+        getCounts() {
+            return JSON.stringify(this.latestCounts);
+        }
     }
 
-    whenResults() {
-      if (this._newResult) {
-        this._newResult = false;
-        return true;
-      }
-      return false;
-    }
+    // ———> Register the *class*, not `new QuokkaExtension()` <———
+    Scratch.extensions.register(QuokkaExtension);
 
-    getCounts() {
-      return JSON.stringify(this.latestCounts);
-    }
-  }
-
-  // ← **Register the class, not an instance**:
-  Scratch.extensions.register(QuokkaExtension);
 })(window.Scratch);
