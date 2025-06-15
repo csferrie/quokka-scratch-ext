@@ -31,10 +31,8 @@
                     { opcode: 'tGate',        blockType: Scratch.BlockType.COMMAND,  text: 't on qubit [Q]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: 'tdgGate',      blockType: Scratch.BlockType.COMMAND,  text: 'tdg on qubit [Q]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: 'measureGate',  blockType: Scratch.BlockType.COMMAND,  text: 'measure qubit [Q] to bit [C]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }, C: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
-                    { opcode: 'inverse',      blockType: Scratch.BlockType.LOOP,     text: 'inverse', branchCount:1},
                     { opcode: 'getQasm',      blockType: Scratch.BlockType.REPORTER, text: 'get QASM' },
                     { opcode: 'runQuantum',   blockType: Scratch.BlockType.COMMAND,  text: 'run QASM with [SHOTS] shots', arguments: { SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 } } },
-                    { opcode: 'whenResults',  blockType: Scratch.BlockType.HAT,      text: 'when quantum results received' },
                     { opcode: 'getCounts',    blockType: Scratch.BlockType.REPORTER, text: 'get counts' }
                 ]
             };
@@ -57,37 +55,6 @@
         tdgGate({ Q }) { this.lines.push(`tdg q[${Q}];`); }
         measureGate({ Q, C }) { this.lines.push(`measure q[${Q}] -> c[${C}];`); }
 
-        // Inverse container: two-stage loop controlled by util.stackFrame
-        inverse(args, util) {
-            util.startBranch(1,false);
-        }
-
-        // Inversion logic
-        _invertLine(line) {
-            const m = /^([a-zA-Z]+)(?:\(([^)]+)\))?\s+q\[(\d+)\];$/.exec(line);
-            if (!m) return `// cannot invert: ${line}`;
-            const [_, op, param, idx] = m;
-            switch (op.toLowerCase()) {
-                case 'h': case 'x': case 'y': case 'z':
-                    return `${op} q[${idx}];`;
-                case 's':
-                    return `sdg q[${idx}];`;
-                case 'sdg':
-                    return `s q[${idx}];`;
-                case 't':
-                    return `tdg q[${idx}];`;
-                case 'tdg':
-                    return `t q[${idx}];`;
-                case 'rx':
-                    return `rx(${-parseFloat(param)}) q[${idx}];`;
-                case 'ry':
-                    return `ry(${-parseFloat(param)}) q[${idx}];`;
-                case 'rz':
-                    return `rz(${-parseFloat(param)}) q[${idx}];`;
-                default:
-                    return `// inverse-${op} not supported: ${line}`;
-            }
-        }
 
         // Execution methods (unchanged)
         runQuantum({ SHOTS }) {
@@ -119,13 +86,6 @@
             });
         }
 
-        whenResults() {
-            if (this._newResult) {
-                this._newResult = false;
-                return true;
-            }
-            return false;
-        }
 
         getCounts() {
             return JSON.stringify(this.latestCounts);
