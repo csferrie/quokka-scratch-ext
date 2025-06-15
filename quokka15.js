@@ -58,8 +58,8 @@
         measureGate({ Q, C }) { this.lines.push(`measure q[${Q}] -> c[${C}];`); }
 
         // Inverse container: two-stage loop controlled by util.stackFrame
-        inverse(util) {
-            util.startBranch(1,false);
+        inverse(args, util) {
+            return 1;
         }
 
         // Inversion logic
