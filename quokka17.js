@@ -31,7 +31,7 @@
                     { opcode: 'tGate',        blockType: Scratch.BlockType.COMMAND,  text: 't on qubit [Q]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: 'tdgGate',      blockType: Scratch.BlockType.COMMAND,  text: 'tdg on qubit [Q]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: 'measureGate',  blockType: Scratch.BlockType.COMMAND,  text: 'measure qubit [Q] to bit [C]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }, C: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
-                    { opcode: 'inverse',      blockType: Scratch.BlockType.CONDITIONAL,     text: 'inverse', branchCount:1},
+                    { opcode: 'inverse',      blockType: Scratch.BlockType.LOOP,     text: 'inverse', branchCount:1},
                     { opcode: 'getQasm',      blockType: Scratch.BlockType.REPORTER, text: 'get QASM' },
                     { opcode: 'runQuantum',   blockType: Scratch.BlockType.COMMAND,  text: 'run QASM with [SHOTS] shots', arguments: { SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 } } },
                     { opcode: 'whenResults',  blockType: Scratch.BlockType.HAT,      text: 'when quantum results received' },
