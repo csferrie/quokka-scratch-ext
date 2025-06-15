@@ -1,6 +1,6 @@
 (function (Scratch) {
     'use strict';
-    console.log('✅ QASM Builder Extension (sandbox) with Inverse Container loaded');
+    console.log('✅ QASM Builder Extension (sandbox) with Inverse loaded');
 
     class QasmBuilder {
         constructor() {
@@ -31,7 +31,7 @@
                     { opcode: 'tGate',        blockType: Scratch.BlockType.COMMAND, text: 't on qubit [Q]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: 'tdgGate',      blockType: Scratch.BlockType.COMMAND, text: 'tdg on qubit [Q]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: 'measureGate',  blockType: Scratch.BlockType.COMMAND, text: 'measure qubit [Q] to bit [C]', arguments: { Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }, C: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
-                    { opcode: 'withInverse',  blockType: Scratch.BlockType.LOOP,    text: 'inverse', arguments: { SUBSTACK: { type: Scratch.ArgumentType.SUBSTACK } } },
+                    { opcode: 'inverse',      blockType: Scratch.BlockType.LOOP,    text: 'inverse', arguments: { SUBSTACK: { type: Scratch.ArgumentType.SUBSTACK } } },
                     { opcode: 'getQasm',      blockType: Scratch.BlockType.REPORTER, text: 'get QASM' },
                     { opcode: 'runQuantum',   blockType: Scratch.BlockType.COMMAND, text: 'run QASM with [SHOTS] shots', arguments: { SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 } } },
                     { opcode: 'whenResults',  blockType: Scratch.BlockType.HAT,      text: 'when quantum results received' },
@@ -57,16 +57,17 @@
         tdgGate({ Q }) { this.lines.push(`tdg q[${Q}];`); }
         measureGate({ Q, C }) { this.lines.push(`measure q[${Q}] -> c[${C}];`); }
 
-        // ── Container: run nested QASM, then invert those lines ───────────────
-        withInverse({ SUBSTACK }) {
+        // ── Container: run nested QASM, then invert those lines only ──────────
+        inverse({ SUBSTACK }) {
             const start = this.lines.length;
             if (SUBSTACK) SUBSTACK();
             const segment = this.lines.slice(start);
-            const inv = [];
+            // remove original segment
+            this.lines.splice(start, segment.length);
+            // append only inverses
             for (let i = segment.length - 1; i >= 0; i--) {
-                inv.push(this._invertLine(segment[i]));
+                this.lines.push(this._invertLine(segment[i]));
             }
-            this.lines.push(...inv);
         }
 
         // ── Inversion logic ───────────────────────────────────────────────────
