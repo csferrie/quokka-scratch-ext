@@ -59,7 +59,7 @@
 
         // Inverse container: two-stage loop controlled by util.stackFrame
         inverse(args, util) {
-            return 1;
+            util.startBranch(1,false);
         }
 
         // Inversion logic
