@@ -8,12 +8,12 @@
         constructor() {
             this.lines = [];
             this.latestCounts = {};
-            this.rawResults = []; // store the stream of outcomes
+            this.rawResults = [];
         }
+
+        // script-building
         clearQasm() { this.lines = []; }
-        addHeader() {
-            this.lines.push('OPENQASM 2.0;', 'include "qelib1.inc";');
-        }
+        addHeader() { this.lines.push('OPENQASM 2.0;', 'include "qelib1.inc";'); }
         declareQreg({ SIZE })  { this.lines.push(`qreg q[${SIZE}];`); }
         declareCreg({ SIZE })  { this.lines.push(`creg c[${SIZE}];`); }
         hGate({ Q })           { this.lines.push(`h q[${Q}];`); }
@@ -28,6 +28,7 @@
         ccxGate({ C1, C2, T }) { this.lines.push(`ccx q[${C1}],q[${C2}],q[${T}];`); }
         measureGate({ Q, C })  { this.lines.push(`measure q[${Q}] -> c[${C}];`); }
 
+        // execution against quokka3!
         runQuantum({ SHOTS }) {
             const script = this.lines.join('\n');
             return fetch('https://quokka3.quokkacomputing.com/qsim/qasm', {
@@ -41,9 +42,8 @@
                     this.latestCounts = { error: json.error };
                     this.rawResults = [];
                 } else {
-                    // build counts and rawResults
-                    const counts = {};
                     this.rawResults = json.result.c.map(bits => bits.join(''));
+                    const counts = {};
                     this.rawResults.forEach(key => {
                         counts[key] = (counts[key] || 0) + 1;
                     });
@@ -56,104 +56,100 @@
             });
         }
 
+        // reporters
+        getQasm() {
+            return this.lines.join('\n');
+        }
         getResults({ TYPE }) {
             const counts = this.latestCounts;
-            const total = Object.values(counts).reduce((a, b) => a + b, 0);
+            const total  = Object.values(counts).reduce((a, b) => a + b, 0);
             switch (TYPE) {
                 case 'raw':
-                    // full stream of bit‐strings
                     return JSON.stringify(this.rawResults);
                 case 'summary':
-                    // key: count
                     return Object.entries(counts)
-                                 .map(([k, v]) => `${k}: ${v}`)
+                                 .map(([k,v]) => `${k}: ${v}`)
                                  .join(', ');
                 case 'percentage':
-                    // key: xx.xx%
                     return Object.entries(counts)
-                                 .map(([k, v]) => `${k}: ${((v / total) * 100).toFixed(2)}%`)
+                                 .map(([k,v]) => `${k}: ${((v/total)*100).toFixed(2)}%`)
                                  .join(', ');
                 case 'frequency':
-                    // key: decimal fraction
                     return Object.entries(counts)
-                                 .map(([k, v]) => `${k}: ${(v / total).toFixed(4)}`)
+                                 .map(([k,v]) => `${k}: ${(v/total).toFixed(4)}`)
                                  .join(', ');
                 default:
                     return JSON.stringify(counts);
             }
+        }
+        getOutcomeCount({ OUTCOME }) {
+            return this.latestCounts[OUTCOME] || 0;
         }
     }
 
     const builder = new QasmBuilder();
 
     // ——————————————————————————————————————————————————————————————
-    // 1) QASM Utilities Extension (light grey)
+    // 1) QASM Utilities (mid-grey)
     // ——————————————————————————————————————————————————————————————
     class QasmUtilities {
         getInfo() {
             return {
                 id: 'qasmUtilities',
                 name: 'QASM Utilities',
-                color1: '#A0A0A0',  // light grey
-                color2: '#C0C0C0',  // shadow grey
+                color1: '#A0A0A0',  // mid grey
+                color2: '#808080',  // darker shadow
                 blocks: [
-                    { opcode: 'clearQasm',  blockType: Scratch.BlockType.COMMAND,  text: 'clear QASM' },
-                    { opcode: 'addHeader',  blockType: Scratch.BlockType.COMMAND,  text: 'add OPENQASM header' },
-                    { opcode: 'declareQreg',blockType: Scratch.BlockType.COMMAND,  text: 'qreg [SIZE]', arguments: {
+                    { opcode: 'clearQasm',   blockType: Scratch.BlockType.COMMAND, text: 'clear QASM' },
+                    { opcode: 'addHeader',   blockType: Scratch.BlockType.COMMAND, text: 'add OPENQASM header' },
+                    { opcode: 'declareQreg', blockType: Scratch.BlockType.COMMAND, text: 'qreg [SIZE]',   arguments: {
                         SIZE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
                     }},
-                    { opcode: 'declareCreg',blockType: Scratch.BlockType.COMMAND,  text: 'creg [SIZE]', arguments: {
+                    { opcode: 'declareCreg', blockType: Scratch.BlockType.COMMAND, text: 'creg [SIZE]',   arguments: {
                         SIZE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
                     }},
-                    { opcode: 'measureGate',blockType: Scratch.BlockType.COMMAND,  text: 'measure qubit [Q] to bit [C]', arguments: {
+                    { opcode: 'measureGate', blockType: Scratch.BlockType.COMMAND, text: 'measure qubit [Q] to bit [C]', arguments: {
                         Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
                         C: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
                     }},
-                    { opcode: 'runQuantum', blockType: Scratch.BlockType.COMMAND,  text: 'run QASM with [SHOTS] shots', arguments: {
+                    { opcode: 'runQuantum',  blockType: Scratch.BlockType.COMMAND, text: 'run QASM with [SHOTS] shots', arguments: {
                         SHOTS: { type: Scratch.ArgumentType.NUMBER, defaultValue: 100 }
-                    }},
-                    { opcode: 'getResults', blockType: Scratch.BlockType.REPORTER, text: 'get results [TYPE]', arguments: {
-                        TYPE: { type: Scratch.ArgumentType.STRING, menu: 'RESULT_TYPE', defaultValue: 'raw' }
                     }}
-                ],
-                menus: {
-                    RESULT_TYPE: ['raw', 'summary', 'percentage', 'frequency']
-                }
+                ]
             };
         }
-        clearQasm(args)      { builder.clearQasm(args); }
-        addHeader(args)      { builder.addHeader(args); }
-        declareQreg(args)    { builder.declareQreg(args); }
-        declareCreg(args)    { builder.declareCreg(args); }
-        measureGate(args)    { builder.measureGate(args); }
-        runQuantum(args)     { return builder.runQuantum(args); }
-        getResults(args)     { return builder.getResults(args); }
+        clearQasm(args)    { builder.clearQasm(args); }
+        addHeader(args)    { builder.addHeader(args); }
+        declareQreg(args)  { builder.declareQreg(args); }
+        declareCreg(args)  { builder.declareCreg(args); }
+        measureGate(args)  { builder.measureGate(args); }
+        runQuantum(args)   { return builder.runQuantum(args); }
     }
 
     // ——————————————————————————————————————————————————————————————
-    // 2) QASM Logic Extension (darker grey)
+    // 2) QASM Logic (darker grey)
     // ——————————————————————————————————————————————————————————————
     class QasmLogic {
         getInfo() {
             return {
                 id: 'qasmLogic',
                 name: 'QASM Logic',
-                color1: '#616161',  // darker grey
-                color2: '#808080',
+                color1: '#616161',
+                color2: '#424242',
                 blocks: [
-                    { opcode: 'xGate',   blockType: Scratch.BlockType.COMMAND, text: 'x on qubit [Q]', arguments: {
+                    { opcode: 'xGate',   blockType: Scratch.BlockType.COMMAND, text: 'x on qubit [Q]',   arguments: {
                         Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
                     }},
-                    { opcode: 'zGate',   blockType: Scratch.BlockType.COMMAND, text: 'z on qubit [Q]', arguments: {
+                    { opcode: 'zGate',   blockType: Scratch.BlockType.COMMAND, text: 'z on qubit [Q]',   arguments: {
                         Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
                     }},
-                    { opcode: 'hGate',   blockType: Scratch.BlockType.COMMAND, text: 'h on qubit [Q]', arguments: {
+                    { opcode: 'hGate',   blockType: Scratch.BlockType.COMMAND, text: 'h on qubit [Q]',   arguments: {
                         Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
                     }},
-                    { opcode: 'sGate',   blockType: Scratch.BlockType.COMMAND, text: 's on qubit [Q]', arguments: {
+                    { opcode: 'sGate',   blockType: Scratch.BlockType.COMMAND, text: 's on qubit [Q]',   arguments: {
                         Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
                     }},
-                    { opcode: 'tGate',   blockType: Scratch.BlockType.COMMAND, text: 't on qubit [Q]', arguments: {
+                    { opcode: 'tGate',   blockType: Scratch.BlockType.COMMAND, text: 't on qubit [Q]',   arguments: {
                         Q: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
                     }},
                     { opcode: 'sdgGate', blockType: Scratch.BlockType.COMMAND, text: 'sdg on qubit [Q]', arguments: {
@@ -190,6 +186,36 @@
         ccxGate(args) { builder.ccxGate(args); }
     }
 
+    // ——————————————————————————————————————————————————————————————
+    // 3) QASM Results (yellow)
+    // ——————————————————————————————————————————————————————————————
+    class QasmResults {
+        getInfo() {
+            return {
+                id: 'qasmResults',
+                name: 'QASM Results',
+                color1: '#F1C40F', // yellow
+                color2: '#D4AC0D',
+                blocks: [
+                    { opcode: 'getQasm',      blockType: Scratch.BlockType.REPORTER, text: 'get QASM' },
+                    { opcode: 'getResults',   blockType: Scratch.BlockType.REPORTER, text: 'get results [TYPE]', arguments: {
+                        TYPE: { type: Scratch.ArgumentType.STRING, menu: 'RESULT_TYPE', defaultValue: 'raw' }
+                    }},
+                    { opcode: 'getOutcomeCount', blockType: Scratch.BlockType.REPORTER, text: 'get [OUTCOME] counts', arguments: {
+                        OUTCOME: { type: Scratch.ArgumentType.STRING, defaultValue: '' }
+                    }}
+                ],
+                menus: {
+                    RESULT_TYPE: ['raw', 'summary', 'percentage', 'frequency']
+                }
+            };
+        }
+        getQasm()            { return builder.getQasm(); }
+        getResults(args)     { return builder.getResults(args); }
+        getOutcomeCount(args){ return builder.getOutcomeCount(args); }
+    }
+
     Scratch.extensions.register(new QasmUtilities());
     Scratch.extensions.register(new QasmLogic());
+    Scratch.extensions.register(new QasmResults());
 })(window.Scratch);
