@@ -30,7 +30,7 @@
 
         runQuantum({ SHOTS }) {
             const script = this.lines.join('\n');
-            return fetch('https://quokka2.quokkacomputing.com/qsim/qasm', {
+            return fetch('https://quokka3.quokkacomputing.com/qsim/qasm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ script, count: SHOTS })
@@ -94,7 +94,7 @@
             return {
                 id: 'qasmUtilities',
                 name: 'QASM Utilities',
-                color1: '#E0E0E0',  // light grey
+                color1: '#A0A0A0',  // light grey
                 color2: '#C0C0C0',  // shadow grey
                 blocks: [
                     { opcode: 'clearQasm',  blockType: Scratch.BlockType.COMMAND,  text: 'clear QASM' },
@@ -138,7 +138,7 @@
             return {
                 id: 'qasmLogic',
                 name: 'QASM Logic',
-                color1: '#A0A0A0',  // darker grey
+                color1: '#616161',  // darker grey
                 color2: '#808080',
                 blocks: [
                     { opcode: 'xGate',   blockType: Scratch.BlockType.COMMAND, text: 'x on qubit [Q]', arguments: {
