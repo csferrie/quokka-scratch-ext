@@ -29,7 +29,7 @@
 
         runQuantum({ SHOTS }) {
             const script = this.lines.join('\n');
-            return fetch('https://quokka2.quokkacomputing.com/qsim/qasm', {
+            return fetch('https://quokka3.quokkacomputing.com/qsim/qasm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ script, count: SHOTS })
