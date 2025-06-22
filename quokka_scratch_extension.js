@@ -1,5 +1,3 @@
-// Updated QASM‑Builder Scratch extension — June 2025
-// Adds: ry° gate, probability reporter, results‑ready hat, SWAP, clearResults
 (function (Scratch) {
     'use strict';
 
