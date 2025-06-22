@@ -1,5 +1,5 @@
 // Updated QASM‑Builder Scratch extension — June 2025
-// Adds: ry° gate, probability reporter, results‑ready hat, SWAP, barrier, clearResults
+// Adds: ry° gate, probability reporter, results‑ready hat, SWAP, clearResults
 (function (Scratch) {
     'use strict';
 
@@ -28,7 +28,6 @@
         tdgGate({ Q })         { this.lines.push(`tdg q[${Q}];`); }
         ryGate({ ANGLE, Q })   { this.lines.push(`ry(${ANGLE}) q[${Q}];`); }
         swapGate({ Q1, Q2 })   { this.lines.push(`swap q[${Q1}],q[${Q2}];`); }
-        barrierGate()          { this.lines.push('barrier;'); }
         cxGate({ Q1, Q2 })     { this.lines.push(`cx q[${Q1}],q[${Q2}];`); }
         ccxGate({ C1, C2, T }) { this.lines.push(`ccx q[${C1}],q[${C2}],q[${T}];`); }
         measureGate({ Q, C })  { this.lines.push(`measure q[${Q}] -> c[${C}];`); }
@@ -185,7 +184,6 @@
                         Q1: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
                         Q2: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
                     }},
-                    { opcode: 'barrierGate', blockType: Scratch.BlockType.COMMAND, text: 'barrier' },
                     { opcode: 'cxGate',  blockType: Scratch.BlockType.COMMAND, text: 'cx control [Q1], target q [Q2]', arguments: {
                         Q1: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
                         Q2: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
@@ -211,7 +209,6 @@
             builder.ryGate({ ANGLE: radians, Q });
         }
         swapGate(args){ builder.swapGate(args); }
-        barrierGate() { builder.barrierGate(); }
         cxGate(args)  { builder.cxGate(args); }
         ccxGate(args) { builder.ccxGate(args); }
     }
